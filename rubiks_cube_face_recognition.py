@@ -26,13 +26,14 @@ def bgr(img):
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
 list_of_colors = [[255,0,0],[0,255,0],[0,0,255],[255,165,0],[250,255,0],[255,255,255]]
+# list_of_colors = [[0,0,255],[0,255,0],[255,0,0],[0,165,255],[0,255,250],[255,255,255]]
 
-def closest(colors,color):
-    colors = np.array(colors)
+def closest(color):
+    list_of_colors_val = np.array(list_of_colors)
     color = np.array(color)
-    distances = np.sqrt(np.sum((colors-color)**2,axis=1))
+    distances = np.sqrt(np.sum((list_of_colors_val-color)**2,axis=1))
     index_of_smallest = np.where(distances==np.amin(distances))
-    smallest_distance = colors[index_of_smallest][0]
+    smallest_distance = list_of_colors_val[index_of_smallest][0]
     return smallest_distance 
 
 
@@ -420,9 +421,9 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
                 w = center_sampling_width
                 mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
-                reconstructed_face[i//3, i % 3, :] = closest(list_of_colors,mean_color)
+                reconstructed_face[i//3, i % 3, :] = closest(mean_color)
                 print(mean_color)
-                print(closest(list_of_colors,mean_color))
+                print(closest(mean_color))
 
             reconstructed_faces.append(reconstructed_face)
 
