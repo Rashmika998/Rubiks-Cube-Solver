@@ -10,6 +10,8 @@ from tqdm import trange
 import matplotlib.pyplot as plt
 import seaborn as sns
 import glob
+from math import sqrt
+
 sns.set()
 sns.set_style('dark')
 RECOGNIZED_IMAGES = "recognized images/"
@@ -22,6 +24,17 @@ def rgb(img):
 
 def bgr(img):
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+list_of_colors = [[255,0,0],[0,255,0],[0,0,255],[255,165,0],[250,255,0],[255,255,255]]
+
+def closest(colors,color):
+    colors = np.array(colors)
+    color = np.array(color)
+    distances = np.sqrt(np.sum((colors-color)**2,axis=1))
+    index_of_smallest = np.where(distances==np.amin(distances))
+    smallest_distance = colors[index_of_smallest][0]
+    return smallest_distance 
+
 
 
 class GHD_Scaler:
@@ -58,12 +71,12 @@ def cluster_points(points, rotate_degree=0, squash_factor=100, n_clusters=7, deb
     cluster_ids = KMeans(n_clusters=n_clusters, random_state=1,
                          algorithm='auto', max_iter=20, n_init=1).fit_predict(X)
 
-    if debug:
-        plt.figure(figsize=(6, 6))
-        plt.scatter(X[:, 0], X[:, 1], c=cluster_ids, cmap='plasma_r')
-        plt.title(
-            f"Positive Lines (Rotated by {rotate_degree} degrees and scaled y by {squash_factor})")
-        plt.show()
+    # if debug:
+    #     plt.figure(figsize=(6, 6))
+    #     plt.scatter(X[:, 0], X[:, 1], c=cluster_ids, cmap='plasma_r')
+    #     plt.title(
+    #         f"Positive Lines (Rotated by {rotate_degree} degrees and scaled y by {squash_factor})")
+    #     plt.show()
 
     return cluster_ids
 
@@ -81,8 +94,8 @@ def line_to_points(lines):
 
 
 def plot_lines_on_cube(points_1, points_2, points_3, fitted_ms_all, fitted_bs_all, scalers_all,  img_gray_rgb, y_pred_1, y_pred_2, y_pred_3, direction_list=[0, 1, 2], n_clusters=7):
-    plt.figure(figsize=(6, 6))
-    plt.imshow(img_gray_rgb)
+    # plt.figure(figsize=(6, 6))
+    # plt.imshow(img_gray_rgb)
 
     for i in direction_list:
         for cluster_id in range(n_clusters):
@@ -115,22 +128,22 @@ def plot_lines_on_cube(points_1, points_2, points_3, fitted_ms_all, fitted_bs_al
             # Inverse Scaler transform
             line_X = scaler.inverse_transform(line_X)
 
-            plt.plot(line_X[:, 0], line_X[:, 1], c=colors_01[i], linewidth=1.5)
+            # plt.plot(line_X[:, 0], line_X[:, 1], c=colors_01[i], linewidth=1.5)
 
-    plt.ylim([0, img_gray_rgb.shape[0]])
-    plt.xlim([0, img_gray_rgb.shape[1]])
-    plt.gca().invert_yaxis()
-    plt.title("Fitted lines")
+    # plt.ylim([0, img_gray_rgb.shape[0]])
+    # plt.xlim([0, img_gray_rgb.shape[1]])
+    # plt.gca().invert_yaxis()
+    # plt.title("Fitted lines")
 
-    plt.show()
+    # plt.show()
 
 
 def plot_intersection_points_on_cube(fitted_ms_all, fitted_bs_all, scalers_all,  img_gray_rgb, direction_list=[1, 2], debug=True, c="g"):
     points_on_the_face = []
 
-    if debug:
-        plt.figure(figsize=(6, 6))
-        plt.imshow(img_gray_rgb)
+    # if debug:
+    #     plt.figure(figsize=(6, 6))
+    #     plt.imshow(img_gray_rgb)
 
     # Sort lines from left to right and bottom to top
     msi = fitted_ms_all[direction_list[0]]
@@ -182,16 +195,16 @@ def plot_intersection_points_on_cube(fitted_ms_all, fitted_bs_all, scalers_all, 
 
             points_on_the_face.append([x, y])
 
-            if debug:
-                plt.scatter([x], [y], c=c)
+            # if debug:
+                # plt.scatter([x], [y], c=c)
 
-    if debug:
-        plt.ylim([0, img_gray_rgb.shape[0]])
-        plt.xlim([0, img_gray_rgb.shape[1]])
-        plt.gca().invert_yaxis()
-        plt.title("Fitted lines")
+    # if debug:
+    #     plt.ylim([0, img_gray_rgb.shape[0]])
+    #     plt.xlim([0, img_gray_rgb.shape[1]])
+    #     plt.gca().invert_yaxis()
+    #     plt.title("Fitted lines")
 
-        plt.show()
+    #     plt.show()
 
     return points_on_the_face
 
@@ -322,7 +335,7 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
 
                 cv2.line(line_image, (x1, y1), (x2, y2), colors[cluster_id], 5)
 
-        cv2.imshow("DEBUG", line_image)
+        # cv2.imshow("DEBUG", line_image)
         # cv2.waitKey(0)
         # return None
 
@@ -407,7 +420,9 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
                 w = center_sampling_width
                 mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
-                reconstructed_face[i//3, i % 3, :] = mean_color
+                reconstructed_face[i//3, i % 3, :] = closest(list_of_colors,mean_color)
+                print(mean_color)
+                print(closest(list_of_colors,mean_color))
 
             reconstructed_faces.append(reconstructed_face)
 
@@ -419,7 +434,6 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
         reconstructed_faces[2] = np.flip(reconstructed_faces[2], axis=0)
 
         return reconstructed_faces
-# endregion
 
 
 # Main
@@ -464,14 +478,14 @@ if __name__ == '__main__':
         detected_image_sides = detect_colors(input_image)
         for j in range(len(detected_image_sides)):
             detected_image_sides[j] = cv2.cvtColor(
-                images[0], cv2.COLOR_BGR2RGB)
+                detected_image_sides[j], cv2.COLOR_BGR2RGB)
             detected_image_sides[j] = cv2.resize(
-                images[0], (500, 500), interpolation=cv2.INTER_AREA)
-            if i == 1:
-                cv2.imwrite(RECOGNIZED_IMAGES+str(j+1) +
+                detected_image_sides[j], (500, 500), interpolation=cv2.INTER_AREA)
+            # if i == 1:
+            cv2.imwrite(RECOGNIZED_IMAGES+img.split("/")[1].split(".")[0]+"_"+str(j+1) +
                             ".png", detected_image_sides[j])
-            elif i == 2:
-                cv2.imwrite(RECOGNIZED_IMAGES+str(j+4) +
-                            ".png", detected_image_sides[j])
+            # elif i == 2:
+            #     cv2.imwrite(RECOGNIZED_IMAGES+str(j+4) +
+            #                 ".png", detected_image_sides[j])
         detected_image_sides.clear()
         i = i+1
