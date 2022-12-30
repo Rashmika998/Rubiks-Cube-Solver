@@ -25,17 +25,19 @@ def rgb(img):
 def bgr(img):
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-list_of_colors = [[255,0,0],[0,255,0],[0,0,255],[255,165,0],[250,255,0],[255,255,255]]
+
+list_of_colors = [[255, 30, 30], [0, 255, 0], [0, 0, 255],
+                  [255, 110, 0], [255, 255, 0], [255, 255, 255]]
 # list_of_colors = [[0,0,255],[0,255,0],[255,0,0],[0,165,255],[0,255,250],[255,255,255]]
+
 
 def closest(color):
     list_of_colors_val = np.array(list_of_colors)
     color = np.array(color)
-    distances = np.sqrt(np.sum((list_of_colors_val-color)**2,axis=1))
-    index_of_smallest = np.where(distances==np.amin(distances))
+    distances = np.sqrt(np.sum((list_of_colors_val-color)**2, axis=1))
+    index_of_smallest = np.where(distances == np.amin(distances))
     smallest_distance = list_of_colors_val[index_of_smallest][0]
-    return smallest_distance 
-
+    return smallest_distance
 
 
 class GHD_Scaler:
@@ -197,7 +199,7 @@ def plot_intersection_points_on_cube(fitted_ms_all, fitted_bs_all, scalers_all, 
             points_on_the_face.append([x, y])
 
             # if debug:
-                # plt.scatter([x], [y], c=c)
+            # plt.scatter([x], [y], c=c)
 
     # if debug:
     #     plt.ylim([0, img_gray_rgb.shape[0]])
@@ -242,7 +244,7 @@ def fit_lines(points, y_pred, n_clusters=7, is_vertical=False):
     return fitted_ms, fitted_bs, scalers
 
 
-def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True):
+def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True):
     """Takes an image of a rubiks cube, finds edges, fits lines to edges and extracts the faces
 
     Args:
@@ -251,7 +253,7 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
     start_time = time.perf_counter_ns()
 
     # 1. Convert to Gray
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # 2. Blur
     blur_gray = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
@@ -421,6 +423,7 @@ def extract_faces(img, kernel_size=5, canny_low=0, canny_high=75, min_line_lengt
                 w = center_sampling_width
                 mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
+                # mean_color = cv2.cvtColor(mean_color, cv2.COLOR_BGR2RGB)
                 reconstructed_face[i//3, i % 3, :] = closest(mean_color)
                 print(mean_color)
                 print(closest(mean_color))
@@ -455,9 +458,10 @@ colors_01 = [
 ]
 
 
-def detect_colors(img):
+def detect_colors(img, image_grey):
     reconstructed_faces = extract_faces(
         img,
+        image_grey,
         kernel_size=7,
         canny_low=0,
         canny_high=75,
@@ -476,17 +480,18 @@ if __name__ == '__main__':
     i = 1
     for img in glob.glob(INPUT_IMAGES+'*'):
         input_image = rgb(cv2.imread(img))
-        detected_image_sides = detect_colors(input_image)
+        input_image_grey = cv2.imread(img, 0)
+        detected_image_sides = detect_colors(input_image, input_image_grey)
         for j in range(len(detected_image_sides)):
             detected_image_sides[j] = cv2.cvtColor(
                 detected_image_sides[j], cv2.COLOR_BGR2RGB)
             detected_image_sides[j] = cv2.resize(
                 detected_image_sides[j], (500, 500), interpolation=cv2.INTER_AREA)
-            # if i == 1:
-            cv2.imwrite(RECOGNIZED_IMAGES+img.split("/")[1].split(".")[0]+"_"+str(j+1) +
+            if i == 1:
+                cv2.imwrite(RECOGNIZED_IMAGES+str(j+1) +
                             ".png", detected_image_sides[j])
-            # elif i == 2:
-            #     cv2.imwrite(RECOGNIZED_IMAGES+str(j+4) +
-            #                 ".png", detected_image_sides[j])
+            elif i == 2:
+                cv2.imwrite(RECOGNIZED_IMAGES+str(j+4) +
+                            ".png", detected_image_sides[j])
         detected_image_sides.clear()
         i = i+1
