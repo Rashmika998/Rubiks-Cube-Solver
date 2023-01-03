@@ -28,7 +28,7 @@ def bgr(img):
 
 list_of_colors = [[255, 30, 30], [0, 255, 0], [0, 0, 255],
                   [255, 110, 0], [255, 255, 0], [255, 255, 255]]
-# list_of_colors = [[0,0,255],[0,255,0],[255,0,0],[0,165,255],[0,255,250],[255,255,255]]
+list_of_colors_names = ["red", "green", "blue", "orange", "yellow", "white"]
 
 
 def closest(color):
@@ -37,7 +37,7 @@ def closest(color):
     distances = np.sqrt(np.sum((list_of_colors_val-color)**2, axis=1))
     index_of_smallest = np.where(distances == np.amin(distances))
     smallest_distance = list_of_colors_val[index_of_smallest][0]
-    return smallest_distance
+    return smallest_distance, list_of_colors_names[index_of_smallest[0][0]]
 
 
 class GHD_Scaler:
@@ -250,13 +250,20 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
     Args:
         img (RGB image): rubiks cube image
     """
+    detected_cols_list_sides = []  # list to save the colors names of the cube sides
+    # list to save the colors names of the cube top and bottom
+    detected_cols_list_top_bottom = []
     start_time = time.perf_counter_ns()
 
-    # 1. Convert to Gray
-    # img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    temp_img = img
+    # 1. Reduce the noises in the original image
+    img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    gray = cv2.morphologyEx(img_gray, cv2.MORPH_OPEN, kernel)
 
-    # 2. Blur
-    blur_gray = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
+    # 2. Smooth it using Gaussian Blur and reduce the noise again
+    blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
+    blur_gray = cv2.fastNlMeansDenoising(blur_gray, None, 10, 7, 21)
 
     # 3. Canny
     edges = cv2.Canny(blur_gray, canny_low, canny_high)
@@ -337,10 +344,6 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
                     negative_lines.append([x1, y1, x2, y2])
 
                 cv2.line(line_image, (x1, y1), (x2, y2), colors[cluster_id], 5)
-
-        # cv2.imshow("DEBUG", line_image)
-        # cv2.waitKey(0)
-        # return None
 
         # 6. Lines to points
         points_1 = line_to_points(vertical_lines)
@@ -423,11 +426,30 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
                 w = center_sampling_width
                 mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
-                # mean_color = cv2.cvtColor(mean_color, cv2.COLOR_BGR2RGB)
-                reconstructed_face[i//3, i % 3, :] = closest(mean_color)
+                reconstructed_face[i//3, i %
+                                   3, :], detected_color = closest(mean_color)
+                if f == 2:
+                    detected_cols_list_top_bottom.append(
+                        detected_color)  # save the side colors
+                else:
+                    detected_cols_list_sides.append(
+                        detected_color)  # save the top colors
                 print(mean_color)
                 print(closest(mean_color))
 
+            # swap the list elements according to the format used in algorithm part
+            if f == 0:
+                detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
+                    3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8] = detected_cols_list_sides[6], detected_cols_list_sides[3], detected_cols_list_sides[0], detected_cols_list_sides[
+                    7], detected_cols_list_sides[4], detected_cols_list_sides[1], detected_cols_list_sides[8], detected_cols_list_sides[5], detected_cols_list_sides[2]
+            elif f == 1:
+                detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
+                    12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[17], detected_cols_list_sides[14], detected_cols_list_sides[11], detected_cols_list_sides[
+                    16], detected_cols_list_sides[13], detected_cols_list_sides[10], detected_cols_list_sides[15], detected_cols_list_sides[12], detected_cols_list_sides[9]
+            else:
+                detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[1], detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[
+                    3], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[8] = detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[8], detected_cols_list_top_bottom[
+                    1], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[3], detected_cols_list_top_bottom[6]
             reconstructed_faces.append(reconstructed_face)
 
         # Fix face orientations
@@ -436,8 +458,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
         # Top face
         reconstructed_faces[2] = np.flip(reconstructed_faces[2], axis=1)
         reconstructed_faces[2] = np.flip(reconstructed_faces[2], axis=0)
-
-        return reconstructed_faces
+        return reconstructed_faces, detected_cols_list_sides, detected_cols_list_top_bottom
 
 
 # Main
@@ -458,35 +479,49 @@ colors_01 = [
 ]
 
 
-def detect_colors(img, image_grey):
-    reconstructed_faces = extract_faces(
-        img,
-        image_grey,
-        kernel_size=7,
-        canny_low=0,
-        canny_high=75,
-        min_line_length=40,
-        max_line_gap=20,
-        center_sampling_width=40,
-        colors=colors,
-        colors_01=colors_01,
-        n_clusters=7,
-        debug=True,
-        debug_time=True)
-    return reconstructed_faces
-
-
-if __name__ == '__main__':
+def detect_colors():
+    # reconstructed_faces, detected_cols_list_sides, detected_cols_list_top_bottom = extract_faces(
+    #     img,
+    #     image_grey,
+    #     kernel_size=7,
+    #     canny_low=0,
+    #     canny_high=75,
+    #     min_line_length=40,
+    #     max_line_gap=20,
+    #     center_sampling_width=40,
+    #     colors=colors,
+    #     colors_01=colors_01,
+    #     n_clusters=7,
+    #     debug=True,
+    #     debug_time=True)
     i = 1
+    detect_colors_list = []  # list to store the side colors
+    # temporary list to store the top/bottom colors
+    detect_colors_list_top_bottom = []
     for img in glob.glob(INPUT_IMAGES+'*'):
         input_image = rgb(cv2.imread(img))
         input_image_grey = cv2.imread(img, 0)
-        detected_image_sides = detect_colors(input_image, input_image_grey)
+        detected_image_sides, temp_detected_cols_list_sides, temp_detected_cols_list_top_bottom = extract_faces(
+            input_image,
+            input_image_grey,
+            kernel_size=7,
+            canny_low=0,
+            canny_high=75,
+            min_line_length=40,
+            max_line_gap=20,
+            center_sampling_width=40,
+            colors=colors,
+            colors_01=colors_01,
+            n_clusters=7,
+            debug=True,
+            debug_time=True)
         for j in range(len(detected_image_sides)):
             detected_image_sides[j] = cv2.cvtColor(
-                detected_image_sides[j], cv2.COLOR_BGR2RGB)
+                detected_image_sides[j], cv2.COLOR_BGR2RGB)  # convert the bgr image to rgb
             detected_image_sides[j] = cv2.resize(
-                detected_image_sides[j], (500, 500), interpolation=cv2.INTER_AREA)
+                detected_image_sides[j], (500, 500), interpolation=cv2.INTER_AREA)  # resize it to display more clearly
+
+            # save the 6 sides of the images in the given directory
             if i == 1:
                 cv2.imwrite(RECOGNIZED_IMAGES+str(j+1) +
                             ".png", detected_image_sides[j])
@@ -494,4 +529,17 @@ if __name__ == '__main__':
                 cv2.imwrite(RECOGNIZED_IMAGES+str(j+4) +
                             ".png", detected_image_sides[j])
         detected_image_sides.clear()
+        detect_colors_list.extend(temp_detected_cols_list_sides)
+        detect_colors_list_top_bottom.extend(
+            temp_detected_cols_list_top_bottom)
+        temp_detected_cols_list_sides.clear()
+        temp_detected_cols_list_top_bottom.clear()
         i = i+1
+
+    # The list index format in the algorithm code is 4 sides, top, bottom. Hence extend the top bottom color values to the 4 sides list color values
+    detect_colors_list.extend(detect_colors_list_top_bottom)
+    return detect_colors_list
+
+
+if __name__ == '__main__':
+    print(detect_colors())
