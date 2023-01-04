@@ -140,14 +140,14 @@ class RectContainer:
 def onpick(event):
     if isinstance(event.artist, Rectangle):
         patch = event.artist
-        print('onpick patch:', patch.get_path())
+        # print('onpick patch:', patch.get_path())
         patch.set_edgecolor('lime')
         event.canvas.draw()
 
     elif isinstance(event.artist, AxesImage):
         im = event.artist
         A = im.get_array()
-        print('onpick image', A.shape)
+        # print('onpick image', A.shape)
 
 
 def check_images(colors_cube):
@@ -168,9 +168,7 @@ def check_images(colors_cube):
 
 
 def main():
-    print(detect_colors())
     pred_colors_yuv=detect_colors()
-    print(pred_colors_yuv)
     colors_cube = np.array(pred_colors_yuv).reshape((6, 3, 3))
 
     # Inspect / adjust results if necessary. This step can modify pred_colors_yuv2.
