@@ -373,7 +373,6 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
         # 10. Find intersection points
 
         img_gray_rgb = np.repeat(img_gray[:, :, None], 3, 2)
-        print(fitted_ms_all)
         points_on_left_face = plot_intersection_points_on_cube(
             fitted_ms_all, fitted_bs_all, scalers_all,  img_gray_rgb,
             direction_list=[0, 1], debug=debug)
@@ -434,8 +433,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
                 else:
                     detected_cols_list_sides.append(
                         detected_color)  # save the top colors
-                print(mean_color)
-                print(closest(mean_color))
+                
 
             # swap the list elements according to the format used in algorithm part
             if f == 0:
@@ -541,5 +539,5 @@ def detect_colors():
     return detect_colors_list
 
 
-if __name__ == '__main__':
-    print(detect_colors())
+# if __name__ == '__main__':
+#     print(detect_colors())
