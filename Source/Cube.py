@@ -651,7 +651,7 @@ class Cube:
         ax.set_ylim([-4.0, 4.0])
         ax.set_zlim([-4.0, 4.0])
         ax.axis('off')
-        ax.set_aspect('equal')
+        ax.set_aspect('auto')
         ax.set_title(title_str, fontsize=18, fontweight='bold')
         ax.view_init(elev=30, azim=-45)
         return ax
