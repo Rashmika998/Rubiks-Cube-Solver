@@ -2,7 +2,7 @@
 step 1<br></br>
 Input images of Rubik's cube 
 You will need to input two images of the Rubik's cube each showing three sides of the cube. You should do this as follows:
-First place the cube showing three sides(side 1, side 2 and side 5) as illustrated in the image below.
+First place the cube showing three sides(side 1, side 2 and side 5) as illustrated in the image below.<br/>
 <img src="https://user-images.githubusercontent.com/91874321/211251579-0021e8ad-5ca9-4430-aab6-6acc856f234e.png" width="500" height="400"/>
 
 Then turn the cube 180 degrees so that the hidden sides(side 4, side 3 and side 6) are now facing front.
