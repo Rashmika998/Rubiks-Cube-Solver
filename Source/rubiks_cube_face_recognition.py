@@ -15,7 +15,7 @@ from math import sqrt
 sns.set()
 sns.set_style('dark')
 RECOGNIZED_IMAGES = "recognized images/"
-INPUT_IMAGES = "input/"
+INPUT_IMAGES = "rubiks3.jpg"
 
 
 def rgb(img):
@@ -242,9 +242,31 @@ def fit_lines(points, y_pred, n_clusters=7, is_vertical=False):
         fitted_bs.append(b)
 
     return fitted_ms, fitted_bs, scalers
+def disp(img, title='', s=12, vmin=None, vmax=None, write=False, file_name=None):
+    plt.figure(figsize=(s,s))
+    plt.axis('off')
+    if vmin is not None and vmax is not None:
+        plt.imshow(img, cmap='gray', vmin=vmin, vmax=vmax)
+    else:
+        plt.imshow(img, cmap='gray')
+    plt.title(title)
+    if write and file_name is not None:
+        plt.savefig(file_name)
+    plt.show()
 
+def shadow_remove(img):
+    rgb_planes = cv2.split(img)
+    result_norm_planes = []
+    for plane in rgb_planes:
+        dilated_img = cv2.dilate(plane, np.ones((7,7), np.uint8))
+        bg_img = cv2.medianBlur(dilated_img, 21)
+        diff_img = 255 - cv2.absdiff(plane, bg_img)
+        norm_img = cv2.normalize(diff_img,None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+        result_norm_planes.append(norm_img)
+    shadowremov = cv2.merge(result_norm_planes)
+    return shadowremov
 
-def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True,turn=1):
+def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True,turn=1):
     """Takes an image of a rubiks cube, finds edges, fits lines to edges and extracts the faces
 
     Args:
@@ -259,14 +281,26 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
     # 1. Reduce the noises in the original image
     img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-    gray = cv2.morphologyEx(img_gray, cv2.MORPH_OPEN, kernel)
+    img_gray_denoise = cv2.fastNlMeansDenoising(img_gray,None,20,7,21)
+
+    gray = cv2.morphologyEx(img_gray_denoise, cv2.MORPH_OPEN, kernel)
 
     # 2. Smooth it using Gaussian Blur and reduce the noise again
     blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-    blur_gray = cv2.fastNlMeansDenoising(blur_gray, None, 10, 7, 21)
+
+    divide = shadow_remove(blur_gray)
+    divide = cv2.fastNlMeansDenoising(divide,None,10,7,21)
+
+    # blur_gray = cv2.fastNlMeansDenoising(blur_gray, None, 10, 7, 21)
 
     # 3. Canny
-    edges = cv2.Canny(blur_gray, canny_low, canny_high)
+    edges = cv2.Canny(divide, canny_low, canny_high,apertureSize = 5, 
+                 L2gradient = True)
+
+    disp(edges)
+
+    # plt.imshow(edges)
+    # plt.show()
 
     # 4. HoughLinesP
     # Distance resolution in pixels of the Hough grid
@@ -398,21 +432,31 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
 
         face_centers = [[], [], []]
 
+        plt.figure(figsize=(8, 8), dpi=100)
+        plt.imshow(img_gray_rgb)
+        # plt.figure(figsize=(8, 8), dpi=100)
+
         for face in face_indices:
             face_center = (points_left[face[0]] + points_left[face[1]] +
                            points_left[face[2]] + points_left[face[3]]) / 4
             face_centers[0].append(face_center)
+            plt.scatter([face_center[0]], [face_center[1]], c='r', s=86)
+
 
         for face in face_indices:
             face_center = (points_right[face[0]] + points_right[face[1]] +
                            points_right[face[2]] + points_right[face[3]]) / 4
             face_centers[1].append(face_center)
+            plt.scatter([face_center[0]], [face_center[1]], c='g', s=86)
+
 
         for face in face_indices:
             face_center = (points_top[face[0]] + points_top[face[1]] +
                            points_top[face[2]] + points_top[face[3]]) / 4
             face_centers[2].append(face_center)
+            plt.scatter([face_center[0]], [face_center[1]], c='b', s=86)
 
+        plt.show()
         # 12. Extract face colors
         reconstructed_faces = []
         faces_names = ["Left", "Right", "Top"]
@@ -423,10 +467,11 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=45, min_
                 x, y = face_centers[f][i]
                 x, y = int(x), int(y)
                 w = center_sampling_width
-                mean_color = img[y-w//2:y+w//2, x-w//2:x +
+                mean_color = temp_img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
                 reconstructed_face[i//3, i %
                                    3, :], detected_color = closest(mean_color)
+                print(mean_color,closest(mean_color))
                 if f == 2:
                     detected_cols_list_top_bottom.append(
                         detected_color)  # save the side colors
@@ -559,6 +604,5 @@ def detect_colors():
     detect_colors_list.extend(detect_colors_list_top_bottom)
     return detect_colors_list
 
-
-# if __name__ == '__main__':
-#     print(detect_colors())
+if __name__ == '__main__':
+    detect_colors()
