@@ -39,27 +39,27 @@ def closest(color, hsv):
         else:
             color = "red"
     elif int(hsv[0]) < 22:
-        if int(hsv[1] < 50):
+        if int(hsv[1] < 65):
             color = "white"
         else:
             color = "orange"
     elif int(hsv[0]) < 33:
-        if int(hsv[1] < 50):
+        if int(hsv[1] < 65):
             color = "white"
         else:
             color = "yellow"
     elif int(hsv[0]) < 78:
-        if int(hsv[1] < 50):
+        if int(hsv[1] < 65):
             color = "white"
         else:
             color = "green"
     elif int(hsv[0]) < 115:
-        if int(hsv[1] < 50):
+        if int(hsv[1] < 65):
             color = "white"
         else:
             color = "blue"
     else:
-        if int(hsv[1] < 50):
+        if int(hsv[1] < 65):
             color = "white"
         else:
             color = "red"
