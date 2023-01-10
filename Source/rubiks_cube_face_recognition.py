@@ -31,7 +31,7 @@ list_of_colors = [[255, 30, 30], [0, 255, 0], [0, 0, 255],
 list_of_colors_names = ["red", "green", "blue", "orange", "yellow", "white"]
 
 
-def closest(color,hsv):
+def closest(color, hsv):
     color = "red"
     if int(hsv[0]) < 5:
         if int(hsv[1] < 20):
@@ -39,20 +39,27 @@ def closest(color,hsv):
         else:
             color = "red"
     elif int(hsv[0]) < 22:
-        color = "orange"
-    elif int(hsv[0]) < 33:
-        color = "yellow"
-        # else:
-        #     color = "red"
-    elif int(hsv[0]) < 78:
-        color = "green"
-    elif int(hsv[0]) < 115:
-        if int(hsv[1] > 200):
-            color = "blue"
-        elif int(hsv[1] < 20):
+        if int(hsv[1] < 50):
             color = "white"
+        else:
+            color = "orange"
+    elif int(hsv[0]) < 33:
+        if int(hsv[1] < 50):
+            color = "white"
+        else:
+            color = "yellow"
+    elif int(hsv[0]) < 78:
+        if int(hsv[1] < 50):
+            color = "white"
+        else:
+            color = "green"
+    elif int(hsv[0]) < 115:
+        if int(hsv[1] < 50):
+            color = "white"
+        else:
+            color = "blue"
     else:
-        if int(hsv[1] < 20):
+        if int(hsv[1] < 50):
             color = "white"
         else:
             color = "red"
@@ -94,15 +101,15 @@ def cluster_points(points, rotate_degree=0, squash_factor=100, n_clusters=7, deb
     X = points.copy()
 
     # if rotate_degree != 0:
-        # Let's Rotate the points by 'rotate_degree' degrees
+    # Let's Rotate the points by 'rotate_degree' degrees
     theta = rotate_degree*np.pi/180
 
-        # Define the rotation matrix
+    # Define the rotation matrix
     R = np.array([
-            [np.cos(theta), np.sin(theta)],
-            [-np.sin(theta), np.cos(theta)]])
+        [np.cos(theta), np.sin(theta)],
+        [-np.sin(theta), np.cos(theta)]])
 
-        # Rotate the points
+    # Rotate the points
     X = X @ R.T
 
     X[:, 1] /= squash_factor
@@ -252,7 +259,7 @@ def plot_intersection_points_on_cube(fitted_ms_all, fitted_bs_all, scalers_all, 
     return points_on_the_face
 
 
-def fit_lines(img,points, y_pred, n_clusters=7, is_vertical=False):
+def fit_lines(img, points, y_pred, n_clusters=7, is_vertical=False):
     fitted_ms = []
     fitted_bs = []
     scalers = []
@@ -284,25 +291,25 @@ def fit_lines(img,points, y_pred, n_clusters=7, is_vertical=False):
     # plt.figure(figsize=(10, 10), dpi=100)
     # plt.imshow(img)
     for cluster_id in range(7):
-            # Get the points of this cluster
-        X = points.copy()[y_pred==cluster_id]
-            
-            # Get the corresponding scaler
+        # Get the points of this cluster
+        X = points.copy()[y_pred == cluster_id]
+
+        # Get the corresponding scaler
         scaler = scalers[cluster_id]
 
-            # Calculate the points in the current line
-        x = np.arange(0,img.shape[1])
-            # Scale the x values so that they work with m and b
-        x = scaler.transform(np.repeat(x[:,None], 2, axis=1))[:,0]
+        # Calculate the points in the current line
+        x = np.arange(0, img.shape[1])
+        # Scale the x values so that they work with m and b
+        x = scaler.transform(np.repeat(x[:, None], 2, axis=1))[:, 0]
         y = fitted_ms[cluster_id]*x+fitted_bs[cluster_id]
 
-            # Concatenate fitted line's x and y
+        # Concatenate fitted line's x and y
 
         if is_vertical:
             line_X = np.column_stack([y, x])
         else:
             line_X = np.column_stack([x, y])
-            
+
             # Inverse Scaler transform
         line_X = scaler.inverse_transform(line_X)
 
@@ -315,11 +322,13 @@ def fit_lines(img,points, y_pred, n_clusters=7, is_vertical=False):
     # plt.legend([1,2,3,4,5,6,7])
     # plt.title("Fitted lines")
 
-    # plt.show()        
+    # plt.show()
 
     return fitted_ms, fitted_bs, scalers
+
+
 def disp(img, title='', s=12, vmin=None, vmax=None, write=False, file_name=None):
-    plt.figure(figsize=(s,s))
+    plt.figure(figsize=(s, s))
     plt.axis('off')
     if vmin is not None and vmax is not None:
         plt.imshow(img, cmap='gray', vmin=vmin, vmax=vmax)
@@ -330,19 +339,22 @@ def disp(img, title='', s=12, vmin=None, vmax=None, write=False, file_name=None)
         plt.savefig(file_name)
     plt.show()
 
+
 def shadow_remove(img):
     rgb_planes = cv2.split(img)
     result_norm_planes = []
     for plane in rgb_planes:
-        dilated_img = cv2.dilate(plane, np.ones((7,7), np.uint8))
+        dilated_img = cv2.dilate(plane, np.ones((7, 7), np.uint8))
         bg_img = cv2.medianBlur(dilated_img, 21)
         diff_img = 255 - cv2.absdiff(plane, bg_img)
-        norm_img = cv2.normalize(diff_img,None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+        norm_img = cv2.normalize(
+            diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
         result_norm_planes.append(norm_img)
     shadowremov = cv2.merge(result_norm_planes)
     return shadowremov
 
-def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True,turn=1,imgName=""):
+
+def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True, turn=1, imgName=""):
     """Takes an image of a rubiks cube, finds edges, fits lines to edges and extracts the faces
 
     Args:
@@ -357,7 +369,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
     # 1. Reduce the noises in the original image
     img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-    img_gray_denoise = cv2.fastNlMeansDenoising(img_gray,None,20,7,21)
+    img_gray_denoise = cv2.fastNlMeansDenoising(img_gray, None, 20, 7, 21)
 
     gray = cv2.morphologyEx(img_gray_denoise, cv2.MORPH_OPEN, kernel)
 
@@ -365,13 +377,13 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
     blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
 
     divide = shadow_remove(blur_gray)
-    divide = cv2.fastNlMeansDenoising(divide,None,10,7,21)
+    divide = cv2.fastNlMeansDenoising(divide, None, 10, 7, 21)
 
     # blur_gray = cv2.fastNlMeansDenoising(blur_gray, None, 10, 7, 21)
 
     # 3. Canny
-    edges = cv2.Canny(divide, canny_low, canny_high,apertureSize = 5, 
-                 L2gradient = True)
+    edges = cv2.Canny(divide, canny_low, canny_high, apertureSize=5,
+                      L2gradient=True)
 
     # disp(edges)
 
@@ -407,14 +419,13 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 if angle >= 180:
                     angle -= 180
                 angles.append(angle)
-                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+                cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
 
-        img_3_gray_rgb = np.repeat(img_gray[:,:,None], 3, 2)
+        img_3_gray_rgb = np.repeat(img_gray[:, :, None], 3, 2)
         lines_edges = cv2.addWeighted(img_3_gray_rgb, 0.8, line_image, 1, 0)
 
         # disp(lines_edges)
         angles = np.array(angles)
-        
 
         # Cluster the angles to find the breaking points
         angles_clustering = KMeans(n_clusters=3, n_init=2)
@@ -461,7 +472,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
 
                 cv2.line(line_image, (x1, y1), (x2, y2), colors[cluster_id], 5)
 
-        img_3_gray_rgb = np.repeat(img_gray[:,:,None], 3, 2)
+        img_3_gray_rgb = np.repeat(img_gray[:, :, None], 3, 2)
         lines_edges = cv2.addWeighted(img_3_gray_rgb, 1, line_image, 1, 0)
 
         # disp(lines_edges)
@@ -469,7 +480,6 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
         points_1 = line_to_points(vertical_lines)
         points_2 = line_to_points(positive_lines)
         points_3 = line_to_points(negative_lines)
-
 
         # plt.figure(figsize=(8,8), dpi=100)
         # plt.title("All of the lines")
@@ -492,20 +502,17 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
 
         # 8. Line Fitting (y=mx+b) or (x=my+b)
         fitted_ms_1, fitted_bs_1, scalers_1 = fit_lines(img,
-            points_1, y_pred_1, n_clusters=n_clusters, is_vertical=True)
+                                                        points_1, y_pred_1, n_clusters=n_clusters, is_vertical=True)
         fitted_ms_2, fitted_bs_2, scalers_2 = fit_lines(img,
-            points_2, y_pred_2, n_clusters=n_clusters, is_vertical=False)
+                                                        points_2, y_pred_2, n_clusters=n_clusters, is_vertical=False)
         fitted_ms_3, fitted_bs_3, scalers_3 = fit_lines(img,
-            points_3, y_pred_3, n_clusters=n_clusters, is_vertical=False)
-
-
-        
+                                                        points_3, y_pred_3, n_clusters=n_clusters, is_vertical=False)
 
         fitted_ms_all = [fitted_ms_1, fitted_ms_2, fitted_ms_3]
         fitted_bs_all = [fitted_bs_1, fitted_bs_2, fitted_bs_3]
         scalers_all = [scalers_1, scalers_2, scalers_3]
 
-        #all together
+        # all together
         # plt.figure(figsize=(10, 10), dpi=100)
 
         # plt.imshow(img)
@@ -513,29 +520,29 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
         for i in range(3):
             for cluster_id in range(7):
                 # Get the points of this cluster
-                if i==0:
-                    X = points_1.copy()[y_pred_1==cluster_id]
-                elif i==1:
-                    X = points_2.copy()[y_pred_2==cluster_id]
-                elif i==2:
-                    X = points_3.copy()[y_pred_3==cluster_id]
-                
+                if i == 0:
+                    X = points_1.copy()[y_pred_1 == cluster_id]
+                elif i == 1:
+                    X = points_2.copy()[y_pred_2 == cluster_id]
+                elif i == 2:
+                    X = points_3.copy()[y_pred_3 == cluster_id]
+
                 # Get the corresponding scaler
                 scaler = scalers_all[i][cluster_id]
 
                 # Calculate the points in the current line
-                x = np.arange(0,img.shape[1])
+                x = np.arange(0, img.shape[1])
 
                 # Scale the x values so that they work with m and b
-                x = scaler.transform(np.repeat(x[:,None], 2, axis=1))[:,0]
+                x = scaler.transform(np.repeat(x[:, None], 2, axis=1))[:, 0]
                 y = fitted_ms_all[i][cluster_id]*x+fitted_bs_all[i][cluster_id]
 
                 # Concatenate fitted line's x and y
-                if i==0:
-                    line_X = np.column_stack([y,x])
+                if i == 0:
+                    line_X = np.column_stack([y, x])
                 else:
-                    line_X = np.column_stack([x,y])
-                
+                    line_X = np.column_stack([x, y])
+
                 # Inverse Scaler transform
                 line_X = scaler.inverse_transform(line_X)
 
@@ -549,7 +556,6 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
         # plt.title("Fitted lines")
 
         # plt.show()
-
 
         # 10. Find intersection points
 
@@ -589,13 +595,11 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
             face_centers[0].append(face_center)
             plt.scatter([face_center[0]], [face_center[1]], c='r', s=86)
 
-
         for face in face_indices:
             face_center = (points_right[face[0]] + points_right[face[1]] +
                            points_right[face[2]] + points_right[face[3]]) / 4
             face_centers[1].append(face_center)
             plt.scatter([face_center[0]], [face_center[1]], c='g', s=86)
-
 
         for face in face_indices:
             face_center = (points_top[face[0]] + points_top[face[1]] +
@@ -618,9 +622,14 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 w = center_sampling_width
                 mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
-                hsv_mean=cv2.cvtColor(np.uint8([[mean_color]]),cv2.COLOR_RGB2HSV).mean(axis=(0,1)).astype(np.uint8)
+                hsv_mean = cv2.cvtColor(np.uint8([[mean_color]]), cv2.COLOR_RGB2HSV).mean(
+                    axis=(0, 1)).astype(np.uint8)
+                print("Mean: ", end="")
+                print(mean_color)
+                print("HSV: ", end="")
+                print(hsv_mean)
                 reconstructed_face[i//3, i %
-                                   3, :], detected_color = closest(mean_color,hsv_mean)
+                                   3, :], detected_color = closest(mean_color, hsv_mean)
                 # print(mean_color,closest(mean_color))
                 if f == 2:
                     detected_cols_list_top_bottom.append(
@@ -628,41 +637,42 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 else:
                     detected_cols_list_sides.append(
                         detected_color)  # save the top colors
+            print()
 
             # swap the list elements according to the format used in algorithm part
-            if turn==1:
+            if turn == 1:
                 if f == 0:
                     detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
-                    3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8] = detected_cols_list_sides[6], detected_cols_list_sides[3], detected_cols_list_sides[0], detected_cols_list_sides[
-                    7], detected_cols_list_sides[4], detected_cols_list_sides[1], detected_cols_list_sides[8], detected_cols_list_sides[5], detected_cols_list_sides[2]
+                        3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8] = detected_cols_list_sides[6], detected_cols_list_sides[3], detected_cols_list_sides[0], detected_cols_list_sides[
+                        7], detected_cols_list_sides[4], detected_cols_list_sides[1], detected_cols_list_sides[8], detected_cols_list_sides[5], detected_cols_list_sides[2]
                 elif f == 1:
                     detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
-                    12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[17], detected_cols_list_sides[14], detected_cols_list_sides[11], detected_cols_list_sides[
-                    16], detected_cols_list_sides[13], detected_cols_list_sides[10], detected_cols_list_sides[15], detected_cols_list_sides[12], detected_cols_list_sides[9]
+                        12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[17], detected_cols_list_sides[14], detected_cols_list_sides[11], detected_cols_list_sides[
+                        16], detected_cols_list_sides[13], detected_cols_list_sides[10], detected_cols_list_sides[15], detected_cols_list_sides[12], detected_cols_list_sides[9]
                 else:
                     detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[1], detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[
-                    3], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[8] = detected_cols_list_top_bottom[8], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[
-                    5], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[3], detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[1], detected_cols_list_top_bottom[0]
-            elif turn==2:
+                        3], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[8] = detected_cols_list_top_bottom[8], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[
+                        5], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[3], detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[1], detected_cols_list_top_bottom[0]
+            elif turn == 2:
                 if f == 0:
                     detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
-                    3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8] = detected_cols_list_sides[2], detected_cols_list_sides[5], detected_cols_list_sides[8], detected_cols_list_sides[
-                    1], detected_cols_list_sides[4], detected_cols_list_sides[7], detected_cols_list_sides[0], detected_cols_list_sides[3], detected_cols_list_sides[6]
+                        3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8] = detected_cols_list_sides[2], detected_cols_list_sides[5], detected_cols_list_sides[8], detected_cols_list_sides[
+                        1], detected_cols_list_sides[4], detected_cols_list_sides[7], detected_cols_list_sides[0], detected_cols_list_sides[3], detected_cols_list_sides[6]
                 elif f == 1:
                     detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
-                    12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[9], detected_cols_list_sides[12], detected_cols_list_sides[15], detected_cols_list_sides[
-                    10], detected_cols_list_sides[13], detected_cols_list_sides[16], detected_cols_list_sides[11], detected_cols_list_sides[14], detected_cols_list_sides[17]
+                        12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[9], detected_cols_list_sides[12], detected_cols_list_sides[15], detected_cols_list_sides[
+                        10], detected_cols_list_sides[13], detected_cols_list_sides[16], detected_cols_list_sides[11], detected_cols_list_sides[14], detected_cols_list_sides[17]
                 else:
                     detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[1], detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[
-                    3], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[8] = detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[8], detected_cols_list_top_bottom[
-                    1], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[3], detected_cols_list_top_bottom[6]
+                        3], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[6], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[8] = detected_cols_list_top_bottom[2], detected_cols_list_top_bottom[5], detected_cols_list_top_bottom[8], detected_cols_list_top_bottom[
+                        1], detected_cols_list_top_bottom[4], detected_cols_list_top_bottom[7], detected_cols_list_top_bottom[0], detected_cols_list_top_bottom[3], detected_cols_list_top_bottom[6]
 
                     # swap two sides
                     detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
-                    3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8],detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
-                    12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
-                    12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17],detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
-                    3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8]
+                        3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8], detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
+                        12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17] = detected_cols_list_sides[9], detected_cols_list_sides[10], detected_cols_list_sides[11], detected_cols_list_sides[
+                        12], detected_cols_list_sides[13], detected_cols_list_sides[14], detected_cols_list_sides[15], detected_cols_list_sides[16], detected_cols_list_sides[17], detected_cols_list_sides[0], detected_cols_list_sides[1], detected_cols_list_sides[2], detected_cols_list_sides[
+                        3], detected_cols_list_sides[4], detected_cols_list_sides[5], detected_cols_list_sides[6], detected_cols_list_sides[7], detected_cols_list_sides[8]
             reconstructed_faces.append(reconstructed_face)
 
         # Fix face orientations
@@ -755,5 +765,6 @@ def detect_colors():
     detect_colors_list.extend(detect_colors_list_top_bottom)
     return detect_colors_list
 
+
 if __name__ == '__main__':
-    detect_colors()
+    print(detect_colors())
