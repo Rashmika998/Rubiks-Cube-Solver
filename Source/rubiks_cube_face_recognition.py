@@ -15,7 +15,7 @@ from math import sqrt
 sns.set()
 sns.set_style('dark')
 RECOGNIZED_IMAGES = "recognized images/"
-INPUT_IMAGES = "rubiks3.jpg"
+INPUT_IMAGES = "Input/"
 
 
 def rgb(img):
@@ -31,13 +31,49 @@ list_of_colors = [[255, 30, 30], [0, 255, 0], [0, 0, 255],
 list_of_colors_names = ["red", "green", "blue", "orange", "yellow", "white"]
 
 
-def closest(color):
-    list_of_colors_val = np.array(list_of_colors)
-    color = np.array(color)
-    distances = np.sqrt(np.sum((list_of_colors_val-color)**2, axis=1))
-    index_of_smallest = np.where(distances == np.amin(distances))
-    smallest_distance = list_of_colors_val[index_of_smallest][0]
-    return smallest_distance, list_of_colors_names[index_of_smallest[0][0]]
+def closest(color,hsv):
+    color = "red"
+    if int(hsv[0]) < 5:
+        if int(hsv[1] < 20):
+            color = "white"
+        else:
+            color = "red"
+    elif int(hsv[0]) < 22:
+        color = "orange"
+    elif int(hsv[0]) < 33:
+        color = "yellow"
+        # else:
+        #     color = "red"
+    elif int(hsv[0]) < 78:
+        color = "green"
+    elif int(hsv[0]) < 115:
+        if int(hsv[1] > 200):
+            color = "blue"
+        elif int(hsv[1] < 20):
+            color = "white"
+    else:
+        if int(hsv[1] < 20):
+            color = "white"
+        else:
+            color = "red"
+    if color == "red":
+        smallest_distance = [255, 30, 30]
+    elif color == "white":
+        smallest_distance = [255, 255, 255]
+    elif color == "orange":
+        smallest_distance = [255, 110, 0]
+    elif color == "yellow":
+        smallest_distance = [255, 255, 0]
+    elif color == "green":
+        smallest_distance = [0, 255, 0]
+    elif color == "blue":
+        smallest_distance = [0, 0, 255]
+    # list_of_colors_val = np.array(list_of_colors)
+    # color = np.array(color)
+    # distances = np.sqrt(np.sum((list_of_colors_val-color)**2, axis=1))
+    # index_of_smallest = np.where(distances == np.amin(distances))
+    # smallest_distance = list_of_colors_val[index_of_smallest][0]
+    return smallest_distance, color
 
 
 class GHD_Scaler:
@@ -57,22 +93,26 @@ class GHD_Scaler:
 def cluster_points(points, rotate_degree=0, squash_factor=100, n_clusters=7, debug=False):
     X = points.copy()
 
-    if rotate_degree != 0:
+    # if rotate_degree != 0:
         # Let's Rotate the points by 'rotate_degree' degrees
-        theta = rotate_degree*np.pi/180
+    theta = rotate_degree*np.pi/180
 
         # Define the rotation matrix
-        R = np.array([
+    R = np.array([
             [np.cos(theta), np.sin(theta)],
             [-np.sin(theta), np.cos(theta)]])
 
         # Rotate the points
-        X = X @ R.T
+    X = X @ R.T
 
     X[:, 1] /= squash_factor
 
-    cluster_ids = KMeans(n_clusters=n_clusters, random_state=1,
-                         algorithm='auto', max_iter=20, n_init=1).fit_predict(X)
+    cluster_ids = KMeans(n_clusters=n_clusters, random_state=1).fit_predict(X)
+
+    # plt.figure(figsize=(8, 8), dpi=100)
+    # plt.scatter(X[:, 0], X[:, 1], c=cluster_ids, cmap='plasma_r', s=200, alpha=0.75)
+    # plt.title(" Lines (Rotated and Scaled)")
+    # plt.show()
 
     # if debug:
     #     plt.figure(figsize=(6, 6))
@@ -212,7 +252,7 @@ def plot_intersection_points_on_cube(fitted_ms_all, fitted_bs_all, scalers_all, 
     return points_on_the_face
 
 
-def fit_lines(points, y_pred, n_clusters=7, is_vertical=False):
+def fit_lines(img,points, y_pred, n_clusters=7, is_vertical=False):
     fitted_ms = []
     fitted_bs = []
     scalers = []
@@ -241,6 +281,42 @@ def fit_lines(points, y_pred, n_clusters=7, is_vertical=False):
         fitted_ms.append(m)
         fitted_bs.append(b)
 
+    # plt.figure(figsize=(10, 10), dpi=100)
+    # plt.imshow(img)
+    for cluster_id in range(7):
+            # Get the points of this cluster
+        X = points.copy()[y_pred==cluster_id]
+            
+            # Get the corresponding scaler
+        scaler = scalers[cluster_id]
+
+            # Calculate the points in the current line
+        x = np.arange(0,img.shape[1])
+            # Scale the x values so that they work with m and b
+        x = scaler.transform(np.repeat(x[:,None], 2, axis=1))[:,0]
+        y = fitted_ms[cluster_id]*x+fitted_bs[cluster_id]
+
+            # Concatenate fitted line's x and y
+
+        if is_vertical:
+            line_X = np.column_stack([y, x])
+        else:
+            line_X = np.column_stack([x, y])
+            
+            # Inverse Scaler transform
+        line_X = scaler.inverse_transform(line_X)
+
+    #     plt.scatter(X[:, 0], X[:, 1], cmap='plasma_r', s=200, alpha=0.75)
+    #     plt.plot(line_X[:, 0], line_X[:, 1], linewidth=3)
+
+    # plt.ylim([0,img.shape[0]])
+    # plt.xlim([0,img.shape[1]])
+    # plt.gca().invert_yaxis()
+    # plt.legend([1,2,3,4,5,6,7])
+    # plt.title("Fitted lines")
+
+    # plt.show()        
+
     return fitted_ms, fitted_bs, scalers
 def disp(img, title='', s=12, vmin=None, vmax=None, write=False, file_name=None):
     plt.figure(figsize=(s,s))
@@ -266,7 +342,7 @@ def shadow_remove(img):
     shadowremov = cv2.merge(result_norm_planes)
     return shadowremov
 
-def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True,turn=1):
+def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_line_length=40, max_line_gap=20, center_sampling_width=10, colors=None, colors_01=None, n_clusters=7, debug=False, debug_time=True,turn=1,imgName=""):
     """Takes an image of a rubiks cube, finds edges, fits lines to edges and extracts the faces
 
     Args:
@@ -297,7 +373,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
     edges = cv2.Canny(divide, canny_low, canny_high,apertureSize = 5, 
                  L2gradient = True)
 
-    disp(edges)
+    # disp(edges)
 
     # plt.imshow(edges)
     # plt.show()
@@ -331,8 +407,14 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 if angle >= 180:
                     angle -= 180
                 angles.append(angle)
+                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
 
+        img_3_gray_rgb = np.repeat(img_gray[:,:,None], 3, 2)
+        lines_edges = cv2.addWeighted(img_3_gray_rgb, 0.8, line_image, 1, 0)
+
+        # disp(lines_edges)
         angles = np.array(angles)
+        
 
         # Cluster the angles to find the breaking points
         angles_clustering = KMeans(n_clusters=3, n_init=2)
@@ -379,30 +461,95 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
 
                 cv2.line(line_image, (x1, y1), (x2, y2), colors[cluster_id], 5)
 
+        img_3_gray_rgb = np.repeat(img_gray[:,:,None], 3, 2)
+        lines_edges = cv2.addWeighted(img_3_gray_rgb, 1, line_image, 1, 0)
+
+        # disp(lines_edges)
         # 6. Lines to points
         points_1 = line_to_points(vertical_lines)
         points_2 = line_to_points(positive_lines)
         points_3 = line_to_points(negative_lines)
 
+
+        # plt.figure(figsize=(8,8), dpi=100)
+        # plt.title("All of the lines")
+        # plt.scatter(points_1[:,0], points_1[:,1],c='g', s=80, alpha=0.75)
+        # plt.scatter(points_2[:,0], points_2[:,1],c='r', s=80, alpha=0.75)
+        # plt.scatter(points_3[:,0], points_3[:,1],c='b', s=80, alpha=0.75)
+        # plt.grid(True)
+        # plt.gca().invert_yaxis()
+        # plt.ylabel("y")
+        # plt.xlabel("x")
+        # plt.show()
         # 7. Cluster points
         y_pred_1 = cluster_points(
             points_1, rotate_degree=rotation_angles[0], squash_factor=100, debug=debug)
         y_pred_2 = cluster_points(
             points_2, rotate_degree=rotation_angles[1], squash_factor=100, debug=debug)
+
         y_pred_3 = cluster_points(
             points_3, rotate_degree=rotation_angles[2], squash_factor=100, debug=debug)
 
         # 8. Line Fitting (y=mx+b) or (x=my+b)
-        fitted_ms_1, fitted_bs_1, scalers_1 = fit_lines(
+        fitted_ms_1, fitted_bs_1, scalers_1 = fit_lines(img,
             points_1, y_pred_1, n_clusters=n_clusters, is_vertical=True)
-        fitted_ms_2, fitted_bs_2, scalers_2 = fit_lines(
+        fitted_ms_2, fitted_bs_2, scalers_2 = fit_lines(img,
             points_2, y_pred_2, n_clusters=n_clusters, is_vertical=False)
-        fitted_ms_3, fitted_bs_3, scalers_3 = fit_lines(
+        fitted_ms_3, fitted_bs_3, scalers_3 = fit_lines(img,
             points_3, y_pred_3, n_clusters=n_clusters, is_vertical=False)
+
+
+        
 
         fitted_ms_all = [fitted_ms_1, fitted_ms_2, fitted_ms_3]
         fitted_bs_all = [fitted_bs_1, fitted_bs_2, fitted_bs_3]
         scalers_all = [scalers_1, scalers_2, scalers_3]
+
+        #all together
+        # plt.figure(figsize=(10, 10), dpi=100)
+
+        # plt.imshow(img)
+
+        for i in range(3):
+            for cluster_id in range(7):
+                # Get the points of this cluster
+                if i==0:
+                    X = points_1.copy()[y_pred_1==cluster_id]
+                elif i==1:
+                    X = points_2.copy()[y_pred_2==cluster_id]
+                elif i==2:
+                    X = points_3.copy()[y_pred_3==cluster_id]
+                
+                # Get the corresponding scaler
+                scaler = scalers_all[i][cluster_id]
+
+                # Calculate the points in the current line
+                x = np.arange(0,img.shape[1])
+
+                # Scale the x values so that they work with m and b
+                x = scaler.transform(np.repeat(x[:,None], 2, axis=1))[:,0]
+                y = fitted_ms_all[i][cluster_id]*x+fitted_bs_all[i][cluster_id]
+
+                # Concatenate fitted line's x and y
+                if i==0:
+                    line_X = np.column_stack([y,x])
+                else:
+                    line_X = np.column_stack([x,y])
+                
+                # Inverse Scaler transform
+                line_X = scaler.inverse_transform(line_X)
+
+                # plt.scatter(X[:, 0], X[:, 1], cmap='plasma_r')
+        #         plt.plot(line_X[:, 0], line_X[:, 1], c=colors_01[i], linewidth=3)
+
+        # plt.ylim([0,img.shape[0]])
+        # plt.xlim([0,img.shape[1]])
+        # plt.gca().invert_yaxis()
+        # # plt.legend([1,2,3,4,5,6,7])
+        # plt.title("Fitted lines")
+
+        # plt.show()
+
 
         # 10. Find intersection points
 
@@ -457,6 +604,8 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
             plt.scatter([face_center[0]], [face_center[1]], c='b', s=86)
 
         plt.show()
+        # print("*****************"+imgName)
+        # cv2.imwrite(RECOGNIZED_IMAGES+imgName.split("/")[1].split(".")[0]+".png", img_gray_rgb)
         # 12. Extract face colors
         reconstructed_faces = []
         faces_names = ["Left", "Right", "Top"]
@@ -467,11 +616,12 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 x, y = face_centers[f][i]
                 x, y = int(x), int(y)
                 w = center_sampling_width
-                mean_color = temp_img[y-w//2:y+w//2, x-w//2:x +
+                mean_color = img[y-w//2:y+w//2, x-w//2:x +
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
+                hsv_mean=cv2.cvtColor(np.uint8([[mean_color]]),cv2.COLOR_RGB2HSV).mean(axis=(0,1)).astype(np.uint8)
                 reconstructed_face[i//3, i %
-                                   3, :], detected_color = closest(mean_color)
-                print(mean_color,closest(mean_color))
+                                   3, :], detected_color = closest(mean_color,hsv_mean)
+                # print(mean_color,closest(mean_color))
                 if f == 2:
                     detected_cols_list_top_bottom.append(
                         detected_color)  # save the side colors
@@ -578,7 +728,8 @@ def detect_colors():
             n_clusters=7,
             debug=True,
             debug_time=True,
-            turn=i)
+            turn=i,
+            imgName=img)
         for j in range(len(detected_image_sides)):
             detected_image_sides[j] = cv2.cvtColor(
                 detected_image_sides[j], cv2.COLOR_BGR2RGB)  # convert the bgr image to rgb
