@@ -585,29 +585,29 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
 
         face_centers = [[], [], []]
 
-        plt.figure(figsize=(8, 8), dpi=100)
-        plt.imshow(img_gray_rgb)
+        # plt.figure(figsize=(8, 8), dpi=100)
+        # plt.imshow(img_gray_rgb)
         # plt.figure(figsize=(8, 8), dpi=100)
 
         for face in face_indices:
             face_center = (points_left[face[0]] + points_left[face[1]] +
                            points_left[face[2]] + points_left[face[3]]) / 4
             face_centers[0].append(face_center)
-            plt.scatter([face_center[0]], [face_center[1]], c='r', s=86)
+            # plt.scatter([face_center[0]], [face_center[1]], c='r', s=86)
 
         for face in face_indices:
             face_center = (points_right[face[0]] + points_right[face[1]] +
                            points_right[face[2]] + points_right[face[3]]) / 4
             face_centers[1].append(face_center)
-            plt.scatter([face_center[0]], [face_center[1]], c='g', s=86)
+            # plt.scatter([face_center[0]], [face_center[1]], c='g', s=86)
 
         for face in face_indices:
             face_center = (points_top[face[0]] + points_top[face[1]] +
                            points_top[face[2]] + points_top[face[3]]) / 4
             face_centers[2].append(face_center)
-            plt.scatter([face_center[0]], [face_center[1]], c='b', s=86)
+            # plt.scatter([face_center[0]], [face_center[1]], c='b', s=86)
 
-        plt.show()
+        # plt.show()
         # print("*****************"+imgName)
         # cv2.imwrite(RECOGNIZED_IMAGES+imgName.split("/")[1].split(".")[0]+".png", img_gray_rgb)
         # 12. Extract face colors
@@ -624,10 +624,7 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                                  w//2].mean(axis=(0, 1)).astype(np.uint8)
                 hsv_mean = cv2.cvtColor(np.uint8([[mean_color]]), cv2.COLOR_RGB2HSV).mean(
                     axis=(0, 1)).astype(np.uint8)
-                print("Mean: ", end="")
-                print(mean_color)
-                print("HSV: ", end="")
-                print(hsv_mean)
+               
                 reconstructed_face[i//3, i %
                                    3, :], detected_color = closest(mean_color, hsv_mean)
                 # print(mean_color,closest(mean_color))
@@ -637,7 +634,6 @@ def extract_faces(img, img_gray, kernel_size=5, canny_low=0, canny_high=75, min_
                 else:
                     detected_cols_list_sides.append(
                         detected_color)  # save the top colors
-            print()
 
             # swap the list elements according to the format used in algorithm part
             if turn == 1:
@@ -746,6 +742,9 @@ def detect_colors():
             detected_image_sides[j] = cv2.resize(
                 detected_image_sides[j], (500, 500), interpolation=cv2.INTER_AREA)  # resize it to display more clearly
 
+
+            # cv2.imwrite(RECOGNIZED_IMAGES+img.split("/")[1].split(".")[0]+ "_"+str(j+1)+".png", detected_image_sides[j])
+
             # save the 6 sides of the images in the given directory
             if i == 1:
                 cv2.imwrite(RECOGNIZED_IMAGES+str(j+1) +
@@ -766,5 +765,5 @@ def detect_colors():
     return detect_colors_list
 
 
-if __name__ == '__main__':
-    print(detect_colors())
+# if __name__ == '__main__':
+#     print(detect_colors())
